@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# Git Push Script - Combines git add, commit, and push
+# Usage: ./gitp "your commit message"
+
+# Check if commit message is provided
+if [ $# -eq 0 ]; then
+    echo "❌ Please provide a commit message!"
+    echo "Usage: ./gitp \"your commit message\""
+    exit 1
+fi
+
+# Get the commit message from arguments
+COMMIT_MSG="$1"
+
+echo "🚀 Git Push Script"
+echo "=================="
+echo "📁 Adding all files..."
+git add .
+
+echo "💾 Committing with message: \"$COMMIT_MSG\""
+git commit -m "$COMMIT_MSG"
+
+echo "⬆️  Pushing to remote..."
+git push
+
+echo "✅ Done! All changes pushed to GitHub"
