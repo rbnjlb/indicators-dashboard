@@ -10,27 +10,47 @@ async function loadDashboardData() {
     const helloResponse = await fetch(`${BACKEND_URL}/api/hello`);
     const helloData = await helloResponse.json();
     
-    // Load weather data (your Python calculations)
-    const weatherResponse = await fetch(`${BACKEND_URL}/api/weather`);
-    
-    if (!weatherResponse.ok) {
-      throw new Error(`Weather API error: ${weatherResponse.status}`);
+    // Try to load weather data (your Python calculations)
+    try {
+      const weatherResponse = await fetch(`${BACKEND_URL}/api/weather`);
+      
+      if (weatherResponse.ok) {
+        const weatherData = await weatherResponse.json();
+        
+        // Display everything with weather
+        messageElement.innerHTML = `
+          <div style="margin-bottom: 20px;">
+            <strong>${helloData.message}</strong>
+          </div>
+          <div style="font-size: 18px; color: #a0a8c0;">
+            🌡️ ${weatherData.temperature} (feels like ${weatherData.feels_like})<br>
+            ☁️ ${weatherData.condition}<br>
+            💧 Humidity: ${weatherData.humidity}<br>
+            🕐 Updated: ${weatherData.timestamp}
+          </div>
+        `;
+      } else {
+        // Weather API not available yet, show only main message
+        messageElement.innerHTML = `
+          <div style="margin-bottom: 20px;">
+            <strong>${helloData.message}</strong>
+          </div>
+          <div style="font-size: 16px; color: #a0a8c0;">
+            ⏳ Weather data coming soon... (deploying)
+          </div>
+        `;
+      }
+    } catch (weatherError) {
+      // Weather API not available yet, show only main message
+      messageElement.innerHTML = `
+        <div style="margin-bottom: 20px;">
+          <strong>${helloData.message}</strong>
+        </div>
+        <div style="font-size: 16px; color: #a0a8c0;">
+          ⏳ Weather data coming soon... (deploying)
+        </div>
+      `;
     }
-    
-    const weatherData = await weatherResponse.json();
-    
-    // Display everything
-    messageElement.innerHTML = `
-      <div style="margin-bottom: 20px;">
-        <strong>${helloData.message}</strong>
-      </div>
-      <div style="font-size: 18px; color: #a0a8c0;">
-        🌡️ ${weatherData.temperature} (feels like ${weatherData.feels_like})<br>
-        ☁️ ${weatherData.condition}<br>
-        💧 Humidity: ${weatherData.humidity}<br>
-        🕐 Updated: ${weatherData.timestamp}
-      </div>
-    `;
   } catch (error) {
     console.error("Error:", error);
     messageElement.innerHTML = `
