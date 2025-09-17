@@ -8,21 +8,11 @@
 </head>
 <body>
   <main class="container">
-    <h1>Indicators Dashboard – Scaffold</h1>
-    <p>This static site (Firebase Hosting) calls a FastAPI backend on Render.</p>
-
-    <label for="backendUrl"><strong>Backend Base URL</strong></label>
-    <input id="backendUrl" type="text" placeholder="https://your-service.onrender.com" />
-
-    <div class="actions">
-      <button id="pingBtn">Call /api/hello</button>
+    <h1>Indicators Dashboard</h1>
+    
+    <div id="dashboard-message" class="dashboard-message">
+      Loading...
     </div>
-
-    <pre id="output">Click the button to call the backend…</pre>
-
-    <footer>
-      <p>Tip: For local dev, run backend on <code>http://localhost:8000</code> and serve this folder with <code>python3 -m http.server 5000 -d frontend</code>.</p>
-    </footer>
   </main>
 
   <script src="/app.js"></script>

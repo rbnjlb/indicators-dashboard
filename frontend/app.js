@@ -1,26 +1,18 @@
-// Frontend script to call the backend /api/hello
+// Simple dashboard that automatically loads message from backend
 
-function normalizeBaseUrl(url) {
-  if (!url) return "";
-  // Trim trailing slash
-  return url.replace(/\/+$/, "");
+const BACKEND_URL = "https://indicators-dashboard-he1e.onrender.com";
+
+async function loadDashboardMessage() {
+  const messageElement = document.getElementById("dashboard-message");
+  
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/hello`);
+    const data = await response.json();
+    messageElement.textContent = data.message;
+  } catch (error) {
+    messageElement.textContent = "Erreur de connexion au serveur";
+  }
 }
 
-document.getElementById("pingBtn").addEventListener("click", async () => {
-  const input = document.getElementById("backendUrl");
-  const base = normalizeBaseUrl(input.value.trim() || window.location.origin);
-
-  const output = document.getElementById("output");
-  output.textContent = `GET ${base}/api/hello …`;
-
-  try {
-    const res = await fetch(`${base}/api/hello`, {
-      method: "GET",
-      headers: { "Accept": "application/json" }
-    });
-    const data = await res.json();
-    output.textContent = JSON.stringify(data, null, 2);
-  } catch (err) {
-    output.textContent = `Request failed: ${err}`;
-  }
-});
+// Load the message when the page loads
+document.addEventListener("DOMContentLoaded", loadDashboardMessage);

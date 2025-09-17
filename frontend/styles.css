@@ -13,7 +13,21 @@ body {
   border-radius: 16px;
   box-shadow: 0 6px 30px rgba(0,0,0,.35);
 }
-h1 { margin-top: 0; letter-spacing: 0.2px; }
+h1 { margin-top: 0; letter-spacing: 0.2px; text-align: center; }
+.dashboard-message {
+  text-align: center;
+  font-size: 24px;
+  font-weight: 500;
+  margin: 60px 0;
+  padding: 40px;
+  background: #1d2650;
+  border-radius: 16px;
+  border: 1px solid #2a3455;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 label { display:block; margin: 16px 0 6px; }
 input[type="text"]{
   width:100%;
