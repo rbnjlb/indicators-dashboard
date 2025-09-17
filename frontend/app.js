@@ -10,19 +10,10 @@ async function loadDashboardData() {
     return;
   }
   
-  try {
-    // Load the main message
-    const helloResponse = await fetch(`${BACKEND_URL}/api/hello`);
-    
-    if (!helloResponse.ok) {
-      throw new Error(`Greeting request failed with ${helloResponse.status}`);
-    }
-
-    const helloData = await helloResponse.json();
 
     let weatherMarkup = `
       <div style="font-size: 16px; color: #a0a8c0;">
-        ⏳ Weather data coming soon... (deploying)
+        ⏳ Weather data coming soon... (JAMAIS)
       </div>
     `;
 
