@@ -12,6 +12,11 @@ async function loadDashboardData() {
     
     // Load weather data (your Python calculations)
     const weatherResponse = await fetch(`${BACKEND_URL}/api/weather`);
+    
+    if (!weatherResponse.ok) {
+      throw new Error(`Weather API error: ${weatherResponse.status}`);
+    }
+    
     const weatherData = await weatherResponse.json();
     
     // Display everything
@@ -27,7 +32,13 @@ async function loadDashboardData() {
       </div>
     `;
   } catch (error) {
-    messageElement.textContent = "Erreur de connexion au serveur";
+    console.error("Error:", error);
+    messageElement.innerHTML = `
+      <div style="color: #ff6b6b;">
+        ❌ Erreur: ${error.message}<br>
+        <small>Vérifiez la console pour plus de détails</small>
+      </div>
+    `;
   }
 }
 
