@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: indicators-backend
+    name: indicators-dashboard
     env: python
     rootDir: backend
     plan: free
