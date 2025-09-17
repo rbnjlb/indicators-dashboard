@@ -35,3 +35,27 @@ def health():
 @app.get("/api/hello")
 def hello():
     return {"message": "Il est pas beau ce dashboard incomplet 🚀"}
+
+@app.get("/api/weather")
+def weather():
+    # Example: Your Python code does the work
+    import random
+    from datetime import datetime
+    
+    # Simulate calling a weather API
+    temperature = random.randint(15, 30)
+    conditions = ["Sunny", "Cloudy", "Rainy", "Windy"]
+    condition = random.choice(conditions)
+    
+    # Your calculations
+    feels_like = temperature + random.randint(-3, 3)
+    humidity = random.randint(40, 80)
+    
+    # Return processed data to frontend
+    return {
+        "temperature": f"{temperature}°C",
+        "condition": condition,
+        "feels_like": f"{feels_like}°C",
+        "humidity": f"{humidity}%",
+        "timestamp": datetime.now().strftime("%H:%M")
+    }
