@@ -7,7 +7,7 @@ async function loadDashboardData() {
   
   try {
     // Load the main message
-    const helloResponse = await fetch(`${BACKEND_URL}/api/hello`);
+    const helloResponse = await fetch(`${BACKEND_URL}/api/weather`);
     const helloData = await helloResponse.json();
     
     // Try to load weather data (your Python calculations)
