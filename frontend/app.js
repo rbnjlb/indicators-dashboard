@@ -5,11 +5,27 @@ const BACKEND_URL = "https://indicators-dashboard-he1e.onrender.com";
 async function loadDashboardData() {
   const messageElement = document.getElementById("dashboard-message");
   
+  if (!messageElement) {
+    console.error("Missing dashboard message element");
+    return;
+  }
+  
   try {
     // Load the main message
-    const helloResponse = await fetch(`${BACKEND_URL}/api/weather`);
-    const helloData = await helloResponse.json();
+    const helloResponse = await fetch(`${BACKEND_URL}/api/hello`);
     
+    if (!helloResponse.ok) {
+      throw new Error(`Greeting request failed with ${helloResponse.status}`);
+    }
+
+    const helloData = await helloResponse.json();
+
+    let weatherMarkup = `
+      <div style="font-size: 16px; color: #a0a8c0;">
+        ⏳ Weather data coming soon... (deploying)
+      </div>
+    `;
+
     // Try to load weather data (your Python calculations)
     try {
       const weatherResponse = await fetch(`${BACKEND_URL}/api/weather`);
@@ -17,11 +33,7 @@ async function loadDashboardData() {
       if (weatherResponse.ok) {
         const weatherData = await weatherResponse.json();
         
-        // Display everything with weather
-        messageElement.innerHTML = `
-          <div style="margin-bottom: 20px;">
-            <strong>${helloData.message}</strong>
-          </div>
+        weatherMarkup = `
           <div style="font-size: 18px; color: #a0a8c0;">
             🌡️ ${weatherData.temperature} (feels like ${weatherData.feels_like})<br>
             ☁️ ${weatherData.condition}<br>
@@ -29,28 +41,18 @@ async function loadDashboardData() {
             🕐 Updated: ${weatherData.timestamp}
           </div>
         `;
-      } else {
-        // Weather API not available yet, show only main message
-        messageElement.innerHTML = `
-          <div style="margin-bottom: 20px;">
-            <strong>${helloData.message}</strong>
-          </div>
-          <div style="font-size: 16px; color: #a0a8c0;">
-            ⏳ Weather data coming soon... (deploying)
-          </div>
-        `;
       }
     } catch (weatherError) {
-      // Weather API not available yet, show only main message
-      messageElement.innerHTML = `
-        <div style="margin-bottom: 20px;">
-          <strong>${helloData.message}</strong>
-        </div>
-        <div style="font-size: 16px; color: #a0a8c0;">
-          ⏳ Weather data coming soon... (deploying)
-        </div>
-      `;
+      console.warn("Weather data unavailable:", weatherError);
     }
+
+    // Display everything with or without weather
+    messageElement.innerHTML = `
+      <div style="margin-bottom: 20px;">
+        <strong>${helloData.message ?? "Indicators are on the way!"}</strong>
+      </div>
+      ${weatherMarkup}
+    `;
   } catch (error) {
     console.error("Error:", error);
     messageElement.innerHTML = `
