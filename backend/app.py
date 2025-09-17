@@ -34,4 +34,4 @@ def health():
 
 @app.get("/api/hello")
 def hello():
-    return {"message": "Hello from FastAPI on Render 🚀"}
+    return {"message": "Il est pas beau ce dashboard incomplet 🚀"}
