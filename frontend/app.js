@@ -15,6 +15,12 @@ async function loadDashboardData() {
       <div style="font-size: 16px; color: #a0a8c0;">
         ⏳ Weather data coming soon... (JAMAIS)
         <br>
+        <br>
+        <br>
+        <br>
+        <br>
+        <br>
+        <br>
       </div>
     `;
 
