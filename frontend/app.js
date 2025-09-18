@@ -41,6 +41,7 @@ async function loadDashboardData() {
     messageElement.innerHTML = `
       <div style="margin-bottom: 20px;">
         <strong>Indicators are on the way!</strong>
+        <br>
       </div>
       ${weatherMarkup}
     `;
