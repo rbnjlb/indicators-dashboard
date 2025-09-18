@@ -4,13 +4,13 @@ const BACKEND_URL = "https://indicators-dashboard-he1e.onrender.com";
 
 async function loadDashboardData() {
   const messageElement = document.getElementById("dashboard-message");
-  
+
   if (!messageElement) {
     console.error("Missing dashboard message element");
     return;
   }
-  
 
+  try {
     let weatherMarkup = `
       <div style="font-size: 16px; color: #a0a8c0;">
         ⏳ Weather data coming soon... (JAMAIS)
@@ -20,10 +20,10 @@ async function loadDashboardData() {
     // Try to load weather data (your Python calculations)
     try {
       const weatherResponse = await fetch(`${BACKEND_URL}/api/weather`);
-      
+
       if (weatherResponse.ok) {
         const weatherData = await weatherResponse.json();
-        
+
         weatherMarkup = `
           <div style="font-size: 18px; color: #a0a8c0;">
             🌡️ ${weatherData.temperature} (feels like ${weatherData.feels_like})<br>
@@ -40,7 +40,7 @@ async function loadDashboardData() {
     // Display everything with or without weather
     messageElement.innerHTML = `
       <div style="margin-bottom: 20px;">
-        <strong>${helloData.message ?? "Indicators are on the way!"}</strong>
+        <strong>Indicators are on the way!</strong>
       </div>
       ${weatherMarkup}
     `;
