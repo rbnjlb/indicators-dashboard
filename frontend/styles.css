@@ -24,7 +24,7 @@ h1 { margin-top: 0; letter-spacing: 0.2px; text-align: center; }
   border-radius: 16px;
   border: 1px solid #2a3455;
   min-height: 120px;
-  display: flex;
+
   align-items: center;
   justify-content: center;
 }
