@@ -4,6 +4,7 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, HttpUrl
 
 from services.download import DEFAULT_DOWNLOAD_ROOT, DownloadError, process_download
@@ -34,16 +35,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.get("/")
-def root():
-    return {
-        "service": "Indicators backend",
-        "docs": "/api/docs",
-        "status": "ok",
-    }
-
 
 @app.get("/healthz")
 def health():
@@ -107,3 +98,8 @@ def youtube_download_file(video_id: str):
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="Video not found.")
     return FileResponse(file_path, media_type="video/mp4", filename=file_path.name)
+
+
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
+if FRONTEND_DIR.exists():
+    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
