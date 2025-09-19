@@ -1,4 +1,7 @@
-const BACKEND_URL = "https://indicators-dashboard-he1e.onrender.com";
+const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "0.0.0.0"]);
+const BACKEND_URL = LOCAL_HOSTNAMES.has(window.location.hostname)
+  ? "http://localhost:8000"
+  : "https://indicators-dashboard-he1e.onrender.com";
 
 function setStatus(message, type = "info") {
   const statusEl = document.getElementById("download-status");
