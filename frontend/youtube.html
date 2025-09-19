@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Indicators Dashboard – Youtube</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="page" role="document">
+    <header class="site-header" role="banner">
+      <div class="header-inner">
+        <div class="brand" aria-label="Indicators home">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span class="brand-title">Indicators</span>
+        </div>
+        <nav class="site-nav" aria-label="Primary">
+          <a href="dashboard.html" class="nav-link">Dashboard</a>
+          <a href="youtube.html" class="nav-link is-active">Youtube</a>
+          <a href="resume.html" class="nav-link">Resume</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="site-main" role="main">
+      <div class="content-card">
+        <div class="card-head">
+          <h2 class="content-heading">YouTube Downloader</h2>
+          <p class="content-subtitle">Paste a link to content you own and the backend will fetch an MP4 copy in high quality.</p>
+        </div>
+
+        <form id="download-form" class="youtube-form">
+          <label for="video-url" class="form-label">Video URL</label>
+          <div class="form-row">
+            <input
+              type="url"
+              id="video-url"
+              name="url"
+              class="form-input"
+              placeholder="https://www.youtube.com/watch?v=..."
+              autocomplete="off"
+              required
+            />
+            <button type="submit" class="form-button">Download</button>
+          </div>
+          <p class="form-hint">Use only videos you have rights to download. Public links may still require cookies for YouTube authentication.</p>
+        </form>
+
+        <div id="download-status" class="download-status" role="status" aria-live="polite"></div>
+        <div id="download-result" class="download-result"></div>
+      </div>
+    </main>
+
+    <footer class="site-footer" role="contentinfo">
+      <div class="footer-inner">
+        <span class="footer-copy">© 2024 Indicators Dashboard</span>
+        <div class="footer-links">
+          <a href="#" class="footer-link">Status</a>
+          <a href="#" class="footer-link">Support</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script src="/youtube.js"></script>
+</body>
+</html>

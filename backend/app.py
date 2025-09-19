@@ -1,5 +1,12 @@
-from fastapi import FastAPI
+import os
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from pydantic import BaseModel, HttpUrl
+
+from services.download import DEFAULT_DOWNLOAD_ROOT, DownloadError, process_download
 
 app = FastAPI(
     title="Indicators Backend",
@@ -56,3 +63,32 @@ def weather():
         "humidity": f"{humidity}%",
         "timestamp": datetime.now().strftime("%H:%M")
     }
+
+
+class YouTubeDownloadRequest(BaseModel):
+    url: HttpUrl
+
+
+def _download_root() -> Path:
+    override = os.environ.get("YOUTUBE_DOWNLOAD_DIR")
+    if override:
+        return Path(override).expanduser()
+    return DEFAULT_DOWNLOAD_ROOT
+
+
+@app.post("/api/youtube/download")
+def youtube_download(payload: YouTubeDownloadRequest):
+    try:
+        result = process_download(str(payload.url))
+    except DownloadError as exc:  # pragma: no cover - passthrough for API consumers
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return result
+
+
+@app.get("/api/youtube/downloads/{video_id}")
+def youtube_download_file(video_id: str):
+    root = _download_root()
+    file_path = root / video_id / f"{video_id}.mp4"
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Video not found.")
+    return FileResponse(file_path, media_type="video/mp4", filename=file_path.name)
