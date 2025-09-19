@@ -6,6 +6,4 @@ cachetools==5.3.3
 gunicorn==23.0.0
 yt-dlp==2024.08.06
 openai==1.48.0
-openai-whisper==20231117
-demucs==4.0.1
 requests==2.32.3
