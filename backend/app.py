@@ -32,9 +32,6 @@ app.add_middleware(
 def health():
     return {"status": "ok"}
 
-@app.get("/api/hello")
-def hello():
-    return {"message": "Il est pas beau ce dashboard incomplet 🚀"}
 
 @app.get("/api/weather")
 def weather():
