@@ -35,6 +35,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.get("/")
+def root():
+    return {
+        "service": "Indicators backend",
+        "docs": "/api/docs",
+        "status": "ok",
+    }
+
+
 @app.get("/healthz")
 def health():
     return {"status": "ok"}
@@ -63,6 +73,11 @@ def weather():
         "humidity": f"{humidity}%",
         "timestamp": datetime.now().strftime("%H:%M")
     }
+
+
+@app.get("/api/hello")
+def hello():
+    return {"message": "Hello from the Indicators backend"}
 
 
 class YouTubeDownloadRequest(BaseModel):
