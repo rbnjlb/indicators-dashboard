@@ -13,8 +13,6 @@ from pathlib import Path
 from typing import Optional
 from urllib.parse import parse_qs, urlparse
 
-import yt_dlp
-from dotenv import load_dotenv
 
 # Ensure environment variables from a local .env are available when the module
 # is imported (useful during local development). No-op on Render where vars are
