@@ -64,6 +64,9 @@ node_modules/
 
 # dotenv environment variables file
 .env
+.venv/
+backend/.venv/
+backend/venv/
 backend/cookies/
 
 # dataconnect generated files
