@@ -1,13 +1,19 @@
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, HttpUrl
 
-from services.download import DEFAULT_DOWNLOAD_ROOT, DownloadError, process_download
+from services.download import (
+    DEFAULT_DOWNLOAD_ROOT,
+    DownloadError,
+    process_download,
+    probe_cookies,
+    save_uploaded_cookies,
+)
 
 app = FastAPI(
     title="Indicators Backend",
@@ -75,6 +81,11 @@ class YouTubeDownloadRequest(BaseModel):
     url: HttpUrl
 
 
+class CookiesTestRequest(BaseModel):
+    test_url: HttpUrl | None = None
+    cookies_path: str | None = None
+
+
 def _download_root() -> Path:
     override = os.environ.get("YOUTUBE_DOWNLOAD_DIR")
     if override:
@@ -88,6 +99,30 @@ def youtube_download(payload: YouTubeDownloadRequest):
         result = process_download(str(payload.url))
     except DownloadError as exc:  # pragma: no cover - passthrough for API consumers
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return result
+
+
+@app.post("/api/youtube/cookies/upload")
+async def youtube_cookies_upload(cookies: UploadFile = File(...)):
+    if not cookies:
+        raise HTTPException(status_code=400, detail="No cookies file provided.")
+
+    try:
+        cookies.file.seek(0)
+        saved_path = save_uploaded_cookies(cookies.file)
+        os.environ["YOUTUBE_COOKIES_PATH"] = str(saved_path)
+    except DownloadError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    finally:
+        await cookies.close()
+
+    return {"ok": True, "cookies_path": str(saved_path)}
+
+
+@app.post("/api/youtube/cookies/test")
+def youtube_cookies_test(payload: CookiesTestRequest):
+    url = str(payload.test_url) if payload.test_url else "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    result = probe_cookies(url, cookies_file=payload.cookies_path)
     return result
 
 

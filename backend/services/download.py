@@ -8,10 +8,11 @@ sessions and configurable download roots.
 from __future__ import annotations
 
 import os
+import shutil
 import sys
 import time
 from pathlib import Path
-from typing import Optional
+from typing import IO, Optional
 from urllib.parse import parse_qs, urlparse
 
 import yt_dlp
@@ -27,6 +28,8 @@ BACKEND_DIR = BASE_DIR.parent
 DEFAULT_DOWNLOAD_ROOT = Path(
     os.environ.get("YOUTUBE_DOWNLOAD_DIR", BACKEND_DIR / "downloads")
 ).expanduser()
+COOKIES_ROOT = Path(os.environ.get("YOUTUBE_COOKIES_DIR", BACKEND_DIR / "cookies"))
+DEFAULT_COOKIES_FILENAME = "cookies.txt"
 
 
 class DownloadError(Exception):
@@ -62,6 +65,7 @@ def _resolve_cookies_path(explicit_path: Optional[str | Path] = None) -> Optiona
     # Common fallbacks (local dev, Render secret file, repo-relative path).
     candidates.extend(
         [
+            COOKIES_ROOT / "default" / DEFAULT_COOKIES_FILENAME,
             Path("cookies.txt"),
             BACKEND_DIR / "cookies" / "youtube.txt",
             Path("/etc/secrets/youtube_cookies.txt"),
@@ -137,6 +141,75 @@ def _validate_cookies(cookies_file: Path) -> bool:
         
     except Exception:
         return False
+
+
+def _cookies_user_dir(user_id: str = "default") -> Path:
+    """Return the directory used to store uploaded cookies for a given user."""
+    target_dir = COOKIES_ROOT / user_id
+    target_dir.mkdir(parents=True, exist_ok=True)
+    return target_dir
+
+
+def save_uploaded_cookies(data: IO[bytes], *, user_id: str = "default") -> Path:
+    """Persist an uploaded cookies file and validate it has YouTube entries."""
+    target_dir = _cookies_user_dir(user_id)
+    target_path = target_dir / DEFAULT_COOKIES_FILENAME
+    tmp_path = target_path.with_suffix(".tmp")
+
+    with open(tmp_path, "wb") as tmp_file:
+        shutil.copyfileobj(data, tmp_file)
+
+    if not _validate_cookies(tmp_path):
+        # Cleanup invalid temp file to avoid confusion
+        tmp_path.unlink(missing_ok=True)
+        raise DownloadError("Uploaded cookies file is invalid or expired for YouTube.")
+
+    tmp_path.replace(target_path)
+    return target_path
+
+
+def probe_cookies(
+    url: str,
+    *,
+    cookies_file: Optional[Path | str] = None,
+) -> dict[str, object]:
+    """Attempt to access a YouTube URL using the provided cookies file."""
+    resolved = _resolve_cookies_path(cookies_file)
+    if not resolved or not resolved.exists():
+        return {
+            "status": "missing",
+            "detail": "Cookies file not found. Upload cookies before testing.",
+        }
+
+    try:
+        ydl_opts = {
+            "cookiefile": str(resolved),
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "noplaylist": True,
+        }
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+
+        return {
+            "status": "ok",
+            "detail": "Cookies are valid for the requested URL.",
+            "video_title": info.get("title"),
+            "uploader": info.get("uploader"),
+        }
+    except Exception as exc:  # yt_dlp raises generic DownloadError subclasses
+        message = str(exc)
+        normalized = _normalize_error_message(message)
+        status = "probe_failed"
+        if "sign in to confirm you're not a bot" in normalized:
+            status = "invalid_or_missing_cookies"
+
+        return {
+            "status": status,
+            "detail": message,
+        }
 
 
 def download_video(
