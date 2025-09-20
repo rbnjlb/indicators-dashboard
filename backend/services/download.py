@@ -76,13 +76,15 @@ def _resolve_cookies_path(explicit_path: Optional[str | Path] = None) -> Optiona
 def _test_browser_cookies(browser: str) -> bool:
     """Test if browser cookies are available and working."""
     try:
+        browser_spec = (browser,)
+
         test_opts = {
-            "cookiesfrombrowser": browser,
+            "cookiesfrombrowser": browser_spec,
             "quiet": True,
             "no_warnings": True,
             "extract_flat": True,
         }
-        
+
         with yt_dlp.YoutubeDL(test_opts) as ydl:
             # Try to extract info from a simple video without downloading
             info = ydl.extract_info("https://www.youtube.com/watch?v=dQw4w9WgXcQ", download=False)
@@ -232,7 +234,10 @@ def download_video(
             if strategy["cookies"]:
                 ydl_opts["cookiefile"] = str(strategy["cookies"])
             elif strategy["cookies_from_browser"]:
-                ydl_opts["cookiesfrombrowser"] = strategy["cookies_from_browser"]
+                browser_spec = strategy["cookies_from_browser"]
+                if isinstance(browser_spec, str):
+                    browser_spec = (browser_spec,)
+                ydl_opts["cookiesfrombrowser"] = browser_spec
                 
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
