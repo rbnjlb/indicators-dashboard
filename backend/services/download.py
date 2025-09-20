@@ -182,12 +182,8 @@ def download_video(
     for browser in available_browsers:
         strategies.append({"cookies": None, "cookies_from_browser": browser, "description": f"with browser cookies ({browser})"})
     
-    # Add fallback strategies
-    strategies.extend([
-        {"cookies": None, "cookies_from_browser": "chrome", "description": "with browser cookies (chrome fallback)"},
-        {"cookies": None, "cookies_from_browser": "firefox", "description": "with browser cookies (firefox fallback)"},
-        {"cookies": None, "cookies_from_browser": None, "description": "without cookies"}
-    ])
+    # Always include a strategy without cookies as a final fallback
+    strategies.append({"cookies": None, "cookies_from_browser": None, "description": "without cookies"})
     
     # Remove duplicates while preserving order
     seen = set()
