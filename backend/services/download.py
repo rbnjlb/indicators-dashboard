@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 from pathlib import Path
 from typing import Optional
 from urllib.parse import parse_qs, urlparse
@@ -72,6 +73,46 @@ def _resolve_cookies_path(explicit_path: Optional[str | Path] = None) -> Optiona
     return None
 
 
+def _validate_cookies(cookies_file: Path) -> bool:
+    """Validate that the cookies file contains valid YouTube cookies."""
+    try:
+        if not cookies_file.exists():
+            return False
+            
+        with open(cookies_file, 'r') as f:
+            content = f.read()
+            
+        # Check for basic YouTube cookie indicators
+        required_indicators = ['.youtube.com', 'TRUE', '/']
+        if not all(indicator in content for indicator in required_indicators):
+            return False
+            
+        # Check if cookies are not expired (basic check)
+        lines = content.strip().split('\n')
+        valid_cookies = 0
+        
+        for line in lines:
+            if line.startswith('#') or not line.strip():
+                continue
+                
+            parts = line.split('\t')
+            if len(parts) >= 5:
+                # Check expiration timestamp (5th field)
+                try:
+                    expiration = int(parts[4])
+                    # If expiration is 0 (session cookie) or in the future
+                    if expiration == 0 or expiration > int(time.time()):
+                        valid_cookies += 1
+                except (ValueError, IndexError):
+                    continue
+                    
+        # Need at least a few valid cookies
+        return valid_cookies >= 3
+        
+    except Exception:
+        return False
+
+
 def download_video(
     url: str,
     video_id: str,
@@ -82,40 +123,138 @@ def download_video(
     """Download a single YouTube video as MP4 using yt-dlp."""
     destination.mkdir(parents=True, exist_ok=True)
 
-    ydl_opts = {
-        "format": "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]",
-        "outtmpl": str(destination / f"{video_id}.mp4"),
-        "noplaylist": True,
-        "quiet": False,
-        "verbose": True,
-        "merge_output_format": "mp4",
-        "extractor_retries": 3,
-        "fragment_retries": 3,
-        "retries": 3,
-        "sleep_interval": 1,
-        "max_sleep_interval": 5,
-        "cookiefile": str(cookies_file) if cookies_file else None,
-        # Spoof a common browser to reduce bot checks.
-        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "referer": "https://www.youtube.com/",
-        "origin": "https://www.youtube.com",
-    }
+    # Multiple user agents to rotate through if one fails
+    user_agents = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15"
+    ]
 
-    # yt-dlp complains about None cookiefile, so drop the key if we don't have it.
-    if not cookies_file:
-        ydl_opts.pop("cookiefile", None)
+    last_exception = None
+    
+    # Validate cookies if provided
+    valid_cookies = None
+    if cookies_file and _validate_cookies(cookies_file):
+        valid_cookies = cookies_file
+        print(f"Using valid cookies from {cookies_file}")
+    elif cookies_file:
+        print(f"Warning: Cookies file {cookies_file} appears invalid or expired, will try without cookies")
+    
+    # Try multiple strategies in order of preference
+    strategies = [
+        {"cookies": valid_cookies, "cookies_from_browser": None, "description": "with cookies" if valid_cookies else "with invalid cookies"},
+        {"cookies": None, "cookies_from_browser": "chrome", "description": "with browser cookies (chrome)"},
+        {"cookies": None, "cookies_from_browser": "firefox", "description": "with browser cookies (firefox)"},
+        {"cookies": None, "cookies_from_browser": None, "description": "without cookies"}
+    ]
+    
+    for strategy in strategies:
+        for i, user_agent in enumerate(user_agents):
+            ydl_opts = {
+                "format": "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best[ext=mp4]",
+                "outtmpl": str(destination / f"{video_id}.mp4"),
+                "noplaylist": True,
+                "quiet": False,
+                "verbose": True,
+                "merge_output_format": "mp4",
+                "extractor_retries": 5,
+                "fragment_retries": 5,
+                "retries": 5,
+                "sleep_interval": 2,
+                "max_sleep_interval": 10,
+                "user_agent": user_agent,
+                "referer": "https://www.youtube.com/",
+                "origin": "https://www.youtube.com",
+                # Additional anti-detection measures
+                "extractor_args": {
+                    "youtube": {
+                        "skip": ["dash", "hls"],  # Skip some formats that might trigger bot detection
+                        "player_skip": ["configs"],  # Skip some player configs
+                    }
+                },
+                # Use a more conservative approach
+                "no_check_certificate": True,
+                "ignoreerrors": False,
+                # Add some randomization to avoid patterns
+                "sleep_interval_subtitles": 1,
+            }
+            
+            # Add cookies if available
+            if strategy["cookies"]:
+                ydl_opts["cookiefile"] = str(strategy["cookies"])
+            elif strategy["cookies_from_browser"]:
+                ydl_opts["cookiesfrombrowser"] = (strategy["cookies_from_browser"],)
+                
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    ydl.download([url])
+                
+                final_path = destination / f"{video_id}.mp4"
+                if final_path.exists():
+                    return final_path
+                    
+            except Exception as exc:
+                last_exception = exc
+                error_msg = str(exc).lower()
+                
+                # If we get bot detection, try next strategy
+                if any(phrase in error_msg for phrase in [
+                    "sign in to confirm you're not a bot",
+                    "bot detection",
+                    "captcha",
+                    "verify you are human",
+                    "unusual traffic"
+                ]):
+                    print(f"Bot detection encountered with {strategy['description']} and user agent {i+1}, trying next...")
+                    continue
+                else:
+                    # For other errors, don't retry
+                    raise DownloadError(f"yt-dlp failed: {exc}") from exc
+    
+    # If all strategies failed
+    if last_exception:
+        error_msg = str(last_exception)
+        if "sign in to confirm you're not a bot" in error_msg.lower():
+            raise DownloadError(
+                "YouTube is blocking automated requests. Please try the following:\n"
+                "1. Update your cookies file by logging into YouTube in a browser and exporting fresh cookies\n"
+                "2. Wait a few minutes before trying again\n"
+                "3. Consider using a VPN or different IP address\n"
+                f"Original error: {error_msg}"
+            )
+        else:
+            raise DownloadError(f"yt-dlp failed after trying all strategies: {error_msg}") from last_exception
+    else:
+        raise DownloadError(f"yt-dlp reported success but {destination / f'{video_id}.mp4'} is missing.")
 
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
-    except Exception as exc:  # pragma: no cover - yt-dlp raises many custom errors
-        raise DownloadError(f"yt-dlp failed: {exc}") from exc
 
-    final_path = destination / f"{video_id}.mp4"
-    if not final_path.exists():
-        raise DownloadError(f"yt-dlp reported success but {final_path} is missing.")
-    return final_path
+def _get_cookie_instructions() -> str:
+    """Get instructions for updating cookies when bot detection occurs."""
+    return """
+To fix YouTube bot detection issues:
+
+1. **Update your cookies file:**
+   - Open YouTube in your browser and log in
+   - Use a browser extension like "Get cookies.txt" or "cookies.txt"
+   - Export cookies for youtube.com
+   - Replace the cookies file at: backend/cookies/youtube.txt
+
+2. **Alternative methods:**
+   - Wait 10-15 minutes before trying again
+   - Try using a different IP address or VPN
+   - Use a different user agent by modifying the code
+
+3. **For production deployment:**
+   - Set YOUTUBE_COOKIES_PATH environment variable
+   - Use Render secrets or similar to store fresh cookies
+   - Consider implementing cookie refresh automation
+
+4. **Check cookie expiration:**
+   - YouTube cookies typically expire every 6 months
+   - Session cookies expire when browser closes
+   - Update cookies regularly to avoid issues
+"""
 
 
 def process_download(
@@ -132,7 +271,16 @@ def process_download(
 
     cookies_file = _resolve_cookies_path(cookies_path)
 
-    video_file = download_video(url, video_id, target_dir, cookies_file=cookies_file)
+    try:
+        video_file = download_video(url, video_id, target_dir, cookies_file=cookies_file)
+    except DownloadError as e:
+        # Add helpful context to the error message
+        error_msg = str(e)
+        if "sign in to confirm you're not a bot" in error_msg.lower():
+            enhanced_error = f"{error_msg}\n\n{_get_cookie_instructions()}"
+            raise DownloadError(enhanced_error) from e
+        else:
+            raise
 
     return {
         "video_id": video_id,
