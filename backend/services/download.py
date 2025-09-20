@@ -33,6 +33,11 @@ class DownloadError(Exception):
     """Raised when yt-dlp fails to fetch a video."""
 
 
+def _normalize_error_message(message: str) -> str:
+    """Lowercase error messages and normalize apostrophes for matching."""
+    return message.lower().replace("’", "'").replace("‘", "'")
+
+
 def get_video_id(url: str) -> str:
     """Extract the YouTube video ID from the provided URL."""
     parsed_url = urlparse(url)
@@ -245,7 +250,7 @@ def download_video(
                     
             except Exception as exc:
                 last_exception = exc
-                error_msg = str(exc).lower()
+                error_msg = _normalize_error_message(str(exc))
                 
                 # If we get bot detection, try next strategy
                 if any(phrase in error_msg for phrase in [
@@ -264,7 +269,8 @@ def download_video(
     # If all strategies failed
     if last_exception:
         error_msg = str(last_exception)
-        if "sign in to confirm you're not a bot" in error_msg.lower():
+        normalized = _normalize_error_message(error_msg)
+        if "sign in to confirm you're not a bot" in normalized:
             cookie_help = ""
             if not valid_cookies and not available_browsers:
                 cookie_help = "\n\n🍪 COOKIE SETUP REQUIRED:\n" \
@@ -337,7 +343,7 @@ def process_download(
     except DownloadError as e:
         # Add helpful context to the error message
         error_msg = str(e)
-        if "sign in to confirm you're not a bot" in error_msg.lower():
+        if "sign in to confirm you're not a bot" in _normalize_error_message(error_msg):
             enhanced_error = f"{error_msg}\n\n{_get_cookie_instructions()}"
             raise DownloadError(enhanced_error) from e
         else:
