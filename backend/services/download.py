@@ -73,6 +73,25 @@ def _resolve_cookies_path(explicit_path: Optional[str | Path] = None) -> Optiona
     return None
 
 
+def _test_browser_cookies(browser: str) -> bool:
+    """Test if browser cookies are available and working."""
+    try:
+        test_opts = {
+            "cookiesfrombrowser": browser,
+            "quiet": True,
+            "no_warnings": True,
+            "extract_flat": True,
+        }
+        
+        with yt_dlp.YoutubeDL(test_opts) as ydl:
+            # Try to extract info from a simple video without downloading
+            info = ydl.extract_info("https://www.youtube.com/watch?v=dQw4w9WgXcQ", download=False)
+            return info is not None
+    except Exception as e:
+        # Don't print errors for browser cookie testing
+        return False
+
+
 def _validate_cookies(cookies_file: Path) -> bool:
     """Validate that the cookies file contains valid YouTube cookies."""
     try:
@@ -141,13 +160,42 @@ def download_video(
     elif cookies_file:
         print(f"Warning: Cookies file {cookies_file} appears invalid or expired, will try without cookies")
     
+    # Test which browser cookies are available
+    available_browsers = []
+    for browser in ["chrome", "firefox", "safari", "edge"]:
+        if _test_browser_cookies(browser):
+            available_browsers.append(browser)
+            print(f"✅ {browser.capitalize()} cookies available")
+        else:
+            print(f"❌ {browser.capitalize()} cookies not available")
+    
     # Try multiple strategies in order of preference
-    strategies = [
-        {"cookies": valid_cookies, "cookies_from_browser": None, "description": "with cookies" if valid_cookies else "with invalid cookies"},
-        {"cookies": None, "cookies_from_browser": "chrome", "description": "with browser cookies (chrome)"},
-        {"cookies": None, "cookies_from_browser": "firefox", "description": "with browser cookies (firefox)"},
+    strategies = []
+    
+    # Add file-based cookies first if valid
+    if valid_cookies:
+        strategies.append({"cookies": valid_cookies, "cookies_from_browser": None, "description": "with cookies file"})
+    
+    # Add available browser cookies
+    for browser in available_browsers:
+        strategies.append({"cookies": None, "cookies_from_browser": browser, "description": f"with browser cookies ({browser})"})
+    
+    # Add fallback strategies
+    strategies.extend([
+        {"cookies": None, "cookies_from_browser": "chrome", "description": "with browser cookies (chrome fallback)"},
+        {"cookies": None, "cookies_from_browser": "firefox", "description": "with browser cookies (firefox fallback)"},
         {"cookies": None, "cookies_from_browser": None, "description": "without cookies"}
-    ]
+    ])
+    
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_strategies = []
+    for strategy in strategies:
+        key = (strategy["cookies"], strategy["cookies_from_browser"])
+        if key not in seen:
+            seen.add(key)
+            unique_strategies.append(strategy)
+    strategies = unique_strategies
     
     for strategy in strategies:
         for i, user_agent in enumerate(user_agents):
@@ -184,7 +232,7 @@ def download_video(
             if strategy["cookies"]:
                 ydl_opts["cookiefile"] = str(strategy["cookies"])
             elif strategy["cookies_from_browser"]:
-                ydl_opts["cookiesfrombrowser"] = (strategy["cookies_from_browser"],)
+                ydl_opts["cookiesfrombrowser"] = strategy["cookies_from_browser"]
                 
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -216,12 +264,24 @@ def download_video(
     if last_exception:
         error_msg = str(last_exception)
         if "sign in to confirm you're not a bot" in error_msg.lower():
+            cookie_help = ""
+            if not valid_cookies and not available_browsers:
+                cookie_help = "\n\n🍪 COOKIE SETUP REQUIRED:\n" \
+                            "1. Make sure you're logged into YouTube in your browser\n" \
+                            "2. Or export cookies manually using 'Get cookies.txt' extension\n" \
+                            "3. Save cookies as: backend/cookies/youtube.txt\n"
+            
             raise DownloadError(
-                "YouTube is blocking automated requests. Please try the following:\n"
-                "1. Update your cookies file by logging into YouTube in a browser and exporting fresh cookies\n"
-                "2. Wait a few minutes before trying again\n"
-                "3. Consider using a VPN or different IP address\n"
-                f"Original error: {error_msg}"
+                "YouTube is blocking automated requests after trying all available methods.\n"
+                f"Tried: {len(strategies)} different authentication strategies\n"
+                f"Available browsers: {', '.join(available_browsers) if available_browsers else 'None'}\n"
+                f"Valid cookies file: {'Yes' if valid_cookies else 'No'}\n"
+                f"{cookie_help}"
+                "OTHER SOLUTIONS:\n"
+                "1. Wait 10-15 minutes before trying again\n"
+                "2. Try using a VPN or different IP address\n"
+                "3. Make sure you're logged into YouTube in your browser\n"
+                f"\nOriginal error: {error_msg}"
             )
         else:
             raise DownloadError(f"yt-dlp failed after trying all strategies: {error_msg}") from last_exception
